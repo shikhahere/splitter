@@ -4,30 +4,32 @@ pragma solidity ^0.4.4;
 contract Splitter {
 	address owner;
 
-	event Transfer(address indexed _from, address indexed _to, uint256 _value);
-	mapping (address => uint) balances;
+	event LogTransfer(address indexed _from, address indexed _to, uint256 _value);
 
 	function Splitter() {
 		owner = msg.sender;
-		balances[msg.sender] = 1000;
 	}
 
 	function sendEther(address receiverFirst,address receiverSecond) payable returns(bool sufficient) {
-		uint amount = msg.value;
-		if (amount > balances[msg.sender]) return false;
-		balances[msg.sender] -= amount;
-		balances[receiverFirst] += amount/2;
-		balances[receiverSecond] += amount/2;
-		if(!receiverFirst.send(amount/2)) throw;
-		if(!receiverSecond.send(amount/2)) throw;
-		Transfer(msg.sender, receiverFirst, amount/2);
-		Transfer(msg.sender, receiverSecond, amount/2);
-		return true;
+		if (msg.value > 0 ) {
+			uint split = msg.value/2;
+			if (split+split != msg.value) {
+				//the value is not splittable example 3
+				throw;
+			}
+			if(!receiverFirst.send(split)) throw;
+			if(!receiverSecond.send(split)) throw;
+			LogTransfer(msg.sender, receiverFirst, split);
+			LogTransfer(msg.sender, receiverSecond, split);
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	function kill() {
 		if (msg.sender == owner) {
-			selfdestruct(owner);
+		selfdestruct(owner);
 		}
 	}
 }
