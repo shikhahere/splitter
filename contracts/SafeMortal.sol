@@ -5,6 +5,7 @@ pragma solidity ^0.4.4;
 contract SafeMortal {
 	address public owner;
 	bool public killed;
+	event LogKilled(address owner, bool killed);
 
 	function SafeMortal() {
 		owner = msg.sender;
@@ -18,6 +19,7 @@ contract SafeMortal {
 			throw;
 		}
 		killed = true;
+		LogKilled(owner,killed);
 	}
 
 	modifier isNotKilled {
@@ -27,5 +29,5 @@ contract SafeMortal {
 		_;
 	}
 
-	function () isNotKilled payable {}
+	//function () isNotKilled payable {}
 }
