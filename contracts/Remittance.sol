@@ -3,23 +3,20 @@ pragma solidity ^0.4.4;
 
 contract Remittance {
 	address private owner;
-	bytes32 private firstPasscode;
-	bytes32 private secondPassCode; 
+	bytes32 private challenge;
 	uint private deadline;
 	uint private limit;
 	uint private challengeStartTime;
-	uint private gasSpenttoDeployContract;
+	uint private feeToPayToOwner;
 
 
 	/**
 	 * Limit is set at the time contract is deployed.
 	 */
-	function Remittance(uint limitToSet) {
+	function Remittance(uint limitToSet, uint fee) {
 	   owner = msg.sender;
 	   limit = limitToSet;
-	   //msg.gas is the left over gas not the used gas
-	   //gasSpenttoDeployContract = msg.gas*tx.gasprice;
-	   gasSpenttoDeployContract = 0;
+	   feeToPayToOwner = fee;
 
 	}
 	
@@ -32,9 +29,10 @@ contract Remittance {
 		if (msg.sender != owner) throw;
 		//If deadline is more than the limit defined then throw
 		if (deadline >= limit) throw;
-		if (msg.value < 0) throw;
-		firstPasscode = firstPasscodeToVerify;
-		secondPassCode = secondPassCodeToverify;
+
+		//The value sent should atleast be greater than the fee to be payed to the owner
+		if (msg.value <= feeToPayToOwner) throw;
+		challenge = computedShaValue(firstPasscodeToVerify, secondPassCodeToverify);
 		deadline = deadlineToSet;
 		challengeStartTime = now;
 		return true;
@@ -43,8 +41,8 @@ contract Remittance {
 	/**
 	 * Challenge can be claimed by passing the sha3 passcodes.
 	 */
-	function claimChallenge(bytes32 firstPasscodeToVerify, bytes32 secondPassCodeToverify) 
-			verifyPasscodes(firstPasscodeToVerify, secondPassCodeToverify) payable returns(bool){
+	function claimChallenge(bytes32 challengeToVerify) 
+			verifyPasscodes(challengeToVerify) payable returns(bool){
 		
 		//Alice should not be claiming the challenge, it should be any body else who has paccodes
 		if (msg.sender == owner) throw; 
@@ -53,10 +51,10 @@ contract Remittance {
 		if (deadline < now-challengeStartTime) throw;
 
 		//Give Bob a little less than the gasSpent tp deploy the contract
-		if (!msg.sender.send(this.balance - gasSpenttoDeployContract)) throw;
+		if (!msg.sender.send(this.balance - feeToPayToOwner)) throw;
 		
-		//Give Alice the amount it took her to deploy the contract
-		//if (!owner.send(gasSpenttoDeployContract)) throw;
+		//Give Alice the fee? Is that what we want?
+		if (!owner.send(feeToPayToOwner)) throw;
 		return true;
 	}
 	
@@ -78,13 +76,15 @@ contract Remittance {
 	}
 
 	
-	modifier verifyPasscodes(bytes32 firstPasscodeToVerify, bytes32 secondPassCodeToverify) {
-		if (firstPasscode != firstPasscodeToVerify) throw;
-		if (secondPassCode != secondPassCodeToverify) throw;
+	modifier verifyPasscodes(bytes32 challengeToVerify) {
+		if (challenge != challengeToVerify) throw;
 		_;
 
 	}
 	
-
+	function computedShaValue(bytes32 a, bytes32 b) constant returns (bytes32) {
+	//Generate a random sha3 value
+        return sha3(a,b,100);
+    }
 	
 }
